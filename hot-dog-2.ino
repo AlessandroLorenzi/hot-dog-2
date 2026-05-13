@@ -202,8 +202,13 @@ void handleTelegramCommands(bool isHot)
 
   const int numMessages = bot.getUpdates(bot.last_message_received + 1);
   for (int i = 0; i < numMessages; i++) {
-    if (bot.messages[i].text == "/status") {
-      bot.sendMessage(bot.messages[i].chat_id, buildStatusMessage(isHot), "");
+    const String& chat_id = bot.messages[i].chat_id;
+    const String& text    = bot.messages[i].text;
+    if (text == "/status") {
+      bot.sendMessage(chat_id, buildStatusMessage(isHot), "");
+    } else if (text == "/uptime") {
+      const uint32_t minutes = millis() / 60000UL;
+      bot.sendMessage(chat_id, "Uptime: " + String(minutes) + " min", "");
     }
   }
 }
