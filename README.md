@@ -46,12 +46,45 @@ flowchart TD
     C --> E[Read SHTC3 sensor]
     E --> F[Update max temp / max humidity]
     F --> K[Print to Serial]
-    K --> H{temp ≥ THRESHOLD?}
+    K --> WF{WiFi connected?}
+    WF -- no  --> N
+    WF -- yes --> CMD[Read Telegram commands]
+    CMD --> H{temp ≥ THRESHOLD?}
     H -- no  --> N
     H -- yes --> L{Interval elapsed?}
     L -- no  --> N
-    L -- yes --> M[Send Telegram message]
+    L -- yes --> M[Send Telegram alert]
     M --> N[Draw e-paper display]
     N --> P[delay 60s]
     P --> C
+```
+
+## Sequence diagram
+
+```mermaid
+sequenceDiagram
+    participant ESP as ESP32-S3
+    participant S as SHTC3
+    participant T as Telegram API
+    participant U as User
+
+    loop Every 60s
+        ESP->>S: read temp & humidity
+        S-->>ESP: tempC, humPct
+
+        ESP->>T: getUpdates()
+        T-->>ESP: pending messages
+        alt /status received
+            U->>T: /status
+            ESP->>T: sendMessage(status)
+            T-->>U: temp, humidity, max
+        end
+
+        alt temp ≥ THRESHOLD and interval elapsed
+            ESP->>T: sendMessage(HOT alert)
+            T-->>U: Fenny is HOT!
+        end
+
+        ESP->>ESP: draw e-paper display
+    end
 ```
