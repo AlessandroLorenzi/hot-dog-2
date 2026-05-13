@@ -6,7 +6,7 @@ Monitors a sensor (SHTC3) and displays current + max values on a 1.54" e-ink scr
 
 ## Hardware
 
-Tested on the **ESP32-S3-ePaper-1.54** board, which integrates:
+Tested on the [ESP32-S3-ePaper-1.54](https://github.com/waveshareteam/ESP32-S3-ePaper-1.54/) board, which integrates:
 
 - ESP32-S3
 - SHTC3 temperature/humidity sensor (I2C)
