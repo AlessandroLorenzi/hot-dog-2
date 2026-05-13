@@ -44,8 +44,7 @@ flowchart TD
     C --> D[EPD ON]
     D --> E[Read SHTC3 sensor]
     E --> F[Update max temp / max humidity]
-    F --> G[Read battery voltage]
-    G --> H{temp ≥ THRESHOLD?}
+    F --> H{temp ≥ THRESHOLD?}
     H -- yes --> I[isHot = true]
     H -- no  --> J[isHot = false]
     I & J --> K[Print to Serial]
