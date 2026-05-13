@@ -41,18 +41,16 @@ Tested on the [ESP32-S3-ePaper-1.54](https://github.com/waveshareteam/ESP32-S3-e
 
 ```mermaid
 flowchart TD
-    A([setup]) --> B[Init Serial / GPIO / I2C / SHTC3]
+    A([setup]) --> B[Init Serial / GPIO / I2C / SHTC3 / EPD]
     B --> W[Connect WiFi]
     W --> C([loop])
-    C --> D[EPD ON]
-    D --> E[Read SHTC3 sensor]
+    C --> E[Read SHTC3 sensor]
     E --> F[Update max temp / max humidity]
     F --> K[Print to Serial]
     K --> L{Interval elapsed?}
     L -- no  --> N
     L -- yes --> M[Send Telegram message]
     M --> N[Draw e-paper display]
-    N --> O[EPD OFF]
-    O --> P[delay 60s]
+    N --> P[delay 60s]
     P --> C
 ```
