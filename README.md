@@ -34,3 +34,26 @@ Monitors a sensor (SHTC3) and displays current + max values on a 1.54" e-ink scr
 
 - **HOT** (temp ≥ threshold): message every 60 seconds
 - **OK** (temp < threshold): message every 10 minutes
+
+## Loop flow
+
+```mermaid
+flowchart TD
+    A([setup]) --> B[Init Serial / GPIO / I2C / SHTC3]
+    B --> C([loop])
+    C --> D[EPD ON]
+    D --> E[Read SHTC3 sensor]
+    E --> F[Update max temp / max humidity]
+    F --> G[Read battery voltage]
+    G --> H{temp ≥ THRESHOLD?}
+    H -- yes --> I[isHot = true]
+    H -- no  --> J[isHot = false]
+    I & J --> K[Print to Serial]
+    K --> L{Interval elapsed?}
+    L -- no  --> N
+    L -- yes --> M[Send Telegram message]
+    M --> N[Draw e-paper display]
+    N --> O[WiFi OFF / EPD OFF]
+    O --> P[delay 60s]
+    P --> C
+```
