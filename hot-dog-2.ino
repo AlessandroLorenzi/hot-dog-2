@@ -103,8 +103,12 @@ void loop() {
   const bool isHot = (!isnan(tempC) && tempC >= THRESHOLD);
 
   printOnSerial(isHot);
-  handleTelegramCommands(isHot);
-  maybeSendTelegramAlert(isHot);
+  if (connectToWifi(WIFI_TIMEOUT_MS)) {
+    handleTelegramCommands(isHot);
+    maybeSendTelegramAlert(isHot);
+  } else {
+    Serial.println("WiFi not connected, skipping Telegram.");
+  }
   epdDraw(isHot);
 
   delay((uint32_t)SLEEP_SECONDS * 1000UL);
@@ -220,10 +224,6 @@ void maybeSendTelegramAlert(bool isHot)
     return;
   }
 
-  if (!connectToWifi(WIFI_TIMEOUT_MS)) {
-    Serial.println("Skipping Telegram: WiFi not connected.");
-    return;
-  }
 
   const String message = buildStatusMessage(isHot);
   const bool sent = bot.sendMessage(CHAT_ID, message, "");
