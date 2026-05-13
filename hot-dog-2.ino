@@ -51,7 +51,6 @@ String tempString;
 String humString;
 
 bool connectToWifi(uint32_t timeoutMs);
-void disconnectWifi();
 bool readSensor(float& outTempC, float& outHumPct);
 bool hasTelegramConfig();
 String buildStatusMessage(bool isHot);
@@ -76,6 +75,7 @@ void setup() {
 
   Wire.begin(I2C_SDA, I2C_SCL);
   shtc3.begin();
+  connectToWifi(WIFI_TIMEOUT_MS);
 }
 
 void loop() {
@@ -100,8 +100,6 @@ void loop() {
   printOnSerial(isHot);
   maybeSendTelegramAlert(isHot);
   epdDraw(isHot);
-
-  disconnectWifi();
 
   display.hibernate();
   digitalWrite(EPD_PWR, HIGH); // EPD OFF
@@ -131,12 +129,6 @@ bool connectToWifi(uint32_t timeoutMs)
 
   Serial.println("WiFi connect timeout.");
   return false;
-}
-
-void disconnectWifi()
-{
-  WiFi.disconnect(true);
-  WiFi.mode(WIFI_OFF);
 }
 
 bool readSensor(float& outTempC, float& outHumPct)
