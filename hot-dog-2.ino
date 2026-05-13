@@ -26,7 +26,8 @@
 #define SPI_CLOCK_HZ            4000000
 #define SLEEP_SECONDS           60
 #define WIFI_TIMEOUT_MS         15000
-#define TELEGRAM_HOT_INTERVAL_S 60
+#define TELEGRAM_HOT_INTERVAL_S  60
+#define TELEGRAM_CHECK_INTERVAL_S 5
 
 // ----------- EPD (1.54" D67) -----------
 GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> display(
@@ -41,6 +42,8 @@ UniversalTelegramBot bot(BOT_TOKEN, wifiClient);
 float maxTempC = -1000.0f;
 float maxHumPct = -1000.0f;
 uint32_t lastTelegramHotMs = 0;
+uint32_t lastSensorUpdateMs = 0;
+uint32_t lastTelegramCheckMs = 0;
 
 float tempC = NAN;
 float humPct = NAN;
@@ -86,32 +89,38 @@ void setup() {
 }
 
 void loop() {
-  if (!readSensor(tempC, humPct)) {
-    Serial.println("SHTC3 read failed.");
-  }
+  const uint32_t now = millis();
+  const bool wifiOk = connectToWifi(WIFI_TIMEOUT_MS);
 
-  if (!isnan(tempC) && (maxTempC < -999.0f || tempC > maxTempC)) {
-    maxTempC = tempC;
-  }
-  if (!isnan(humPct) && (maxHumPct < -999.0f || humPct > maxHumPct)) {
-    maxHumPct = humPct;
-  }
-
-  tempString = isnan(tempC) ? "--.-" : String(tempC, 0);
-  humString = isnan(humPct) ? "--.-" : String(humPct, 0);
-
-  const bool isHot = (!isnan(tempC) && tempC >= THRESHOLD);
-
-  printOnSerial(isHot);
-  if (connectToWifi(WIFI_TIMEOUT_MS)) {
+  if (wifiOk && (lastTelegramCheckMs == 0 || (now - lastTelegramCheckMs) >= (uint32_t)TELEGRAM_CHECK_INTERVAL_S * 1000UL)) {
+    lastTelegramCheckMs = now;
+    const bool isHot = (!isnan(tempC) && tempC >= THRESHOLD);
     handleTelegramCommands(isHot);
-    maybeSendTelegramAlert(isHot);
-  } else {
-    Serial.println("WiFi not connected, skipping Telegram.");
   }
-  epdDraw(isHot);
 
-  delay((uint32_t)SLEEP_SECONDS * 1000UL);
+  if (lastSensorUpdateMs == 0 || (now - lastSensorUpdateMs) >= (uint32_t)SLEEP_SECONDS * 1000UL) {
+    lastSensorUpdateMs = now;
+
+    if (!readSensor(tempC, humPct)) {
+      Serial.println("SHTC3 read failed.");
+    }
+
+    if (!isnan(tempC) && (maxTempC < -999.0f || tempC > maxTempC)) maxTempC = tempC;
+    if (!isnan(humPct) && (maxHumPct < -999.0f || humPct > maxHumPct)) maxHumPct = humPct;
+
+    tempString = isnan(tempC) ? "--.-" : String(tempC, 0);
+    humString  = isnan(humPct) ? "--.-" : String(humPct, 0);
+
+    const bool isHot = (!isnan(tempC) && tempC >= THRESHOLD);
+
+    printOnSerial(isHot);
+    if (wifiOk) {
+      maybeSendTelegramAlert(isHot);
+    } else {
+      Serial.println("WiFi not connected, skipping Telegram.");
+    }
+    epdDraw(isHot);
+  }
 }
 
 bool connectToWifi(uint32_t timeoutMs)
