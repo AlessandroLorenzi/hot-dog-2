@@ -53,6 +53,7 @@ bool connectToWifi(uint32_t timeoutMs);
 bool readSensor(float& outTempC, float& outHumPct);
 bool hasTelegramConfig();
 String buildStatusMessage(bool isHot);
+void handleTelegramCommands(bool isHot);
 void maybeSendTelegramAlert(bool isHot);
 void printOnSerial(bool isHot);
 void epdDraw(bool isHot);
@@ -81,6 +82,7 @@ void setup() {
   display.setRotation(3);
 
   connectToWifi(WIFI_TIMEOUT_MS);
+  wifiClient.setInsecure();
 }
 
 void loop() {
@@ -101,6 +103,7 @@ void loop() {
   const bool isHot = (!isnan(tempC) && tempC >= THRESHOLD);
 
   printOnSerial(isHot);
+  handleTelegramCommands(isHot);
   maybeSendTelegramAlert(isHot);
   epdDraw(isHot);
 
@@ -189,6 +192,18 @@ String buildStatusMessage(bool isHot)
   return msg;
 }
 
+void handleTelegramCommands(bool isHot)
+{
+  if (!hasTelegramConfig()) return;
+
+  const int numMessages = bot.getUpdates(bot.last_message_received + 1);
+  for (int i = 0; i < numMessages; i++) {
+    if (bot.messages[i].text == "/status") {
+      bot.sendMessage(bot.messages[i].chat_id, buildStatusMessage(isHot), "");
+    }
+  }
+}
+
 void maybeSendTelegramAlert(bool isHot)
 {
   if (!isHot) {
@@ -210,7 +225,6 @@ void maybeSendTelegramAlert(bool isHot)
     return;
   }
 
-  wifiClient.setInsecure();
   const String message = buildStatusMessage(isHot);
   const bool sent = bot.sendMessage(CHAT_ID, message, "");
 
