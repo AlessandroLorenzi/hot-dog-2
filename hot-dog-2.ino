@@ -6,7 +6,6 @@
 #include <GxEPD2_BW.h>
 #include <Adafruit_SHTC3.h>
 #include <UniversalTelegramBot.h>
-#include "fonts.h"
 #include "config.h"
 
 // ----------- EPD pins (ESP32-S3) -----------
@@ -248,33 +247,29 @@ void epdDraw(bool isHot)
   do {
     display.fillScreen(GxEPD_WHITE);
 
-    // Layout simile a hot-dog: T, max, status
     display.setTextColor(GxEPD_BLACK);
-    display.setFont(&DejaVu_Sans_Condensed_Bold_15);
-    display.setTextSize(2);
 
-    // Line 1: current T and H
-    display.setCursor(10, 40);
+    // Line 1: temp and humidity
+    display.setTextSize(3);
+    display.setCursor(5, 10);
     display.print(tempString);
     display.print("C ");
     display.print(humString);
     display.print("%");
 
-    
-    // Line 3 (large): FENNY OK or HOT
-    display.setFont(&DejaVu_Sans_Condensed_Bold_23);
-    display.setTextSize(2);
-    display.setCursor(10, 100);
+    // Lines 2-4: status
+    display.setTextSize(5);
+    display.setCursor(5, 55);
     display.print("FENNY");
     if (isHot) {
-      display.setCursor(10, 140);
+      display.setCursor(5, 110);
       display.print("TROPPO");
-      display.setCursor(10, 180);
+      display.setCursor(5, 160);
       display.print("CALDO!");
     } else {
-      display.setCursor(10, 140);
-      display.print("STA");     
-      display.setCursor(10, 180);
+      display.setCursor(5, 110);
+      display.print("STA");
+      display.setCursor(5, 160);
       display.print("BENE");
     }
   } while (display.nextPage());
