@@ -1,4 +1,6 @@
-# hot-dog-2
+# Hot Dog 2.0
+
+New version of the original "Hot Dog" project [AlessandroLorenzi/hot-dog](https://github.com/AlessandroLorenzi/hot-dog)
 
 ESP32-S3 temperature/humidity monitor with e-paper display and Telegram alerts.
 
