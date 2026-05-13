@@ -49,42 +49,20 @@ flowchart TD
     K --> WF{WiFi connected?}
     WF -- no  --> N
     WF -- yes --> CMD[Read Telegram commands]
-    CMD --> H{temp ≥ THRESHOLD?}
-    H -- no  --> N
-    H -- yes --> L{Interval elapsed?}
-    L -- no  --> N
-    L -- yes --> M[Send Telegram alert]
+    CMD --> M[Send Telegram alert]
     M --> N[Draw e-paper display]
     N --> P[delay 60s]
     P --> C
 ```
 
-## Sequence diagram
+## Telegram alert logic
 
 ```mermaid
-sequenceDiagram
-    participant ESP as ESP32-S3
-    participant S as SHTC3
-    participant T as Telegram API
-    participant U as User
-
-    loop Every 60s
-        ESP->>S: read temp & humidity
-        S-->>ESP: tempC, humPct
-
-        ESP->>T: getUpdates()
-        T-->>ESP: pending messages
-        alt /status received
-            U->>T: /status
-            ESP->>T: sendMessage(status)
-            T-->>U: temp, humidity, max
-        end
-
-        alt temp ≥ THRESHOLD and interval elapsed
-            ESP->>T: sendMessage(HOT alert)
-            T-->>U: Fenny is HOT!
-        end
-
-        ESP->>ESP: draw e-paper display
-    end
+flowchart TD
+    A([Send Telegram alert]) --> H{temp ≥ THRESHOLD?}
+    H -- no  --> Z([return])
+    H -- yes --> L{Interval elapsed?}
+    L -- no  --> Z
+    L -- yes --> M[sendMessage HOT alert]
+    M --> Z
 ```
