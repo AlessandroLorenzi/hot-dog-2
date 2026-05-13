@@ -36,6 +36,8 @@ Tested on the [ESP32-S3-ePaper-1.54](https://github.com/waveshareteam/ESP32-S3-e
 
 Sends a message every 60 seconds while temperature is above the threshold. No message when temperature is below threshold.
 
+Send `/status` in the chat to get an immediate reply with current temperature, humidity, and max values.
+
 ## Loop flow
 
 ```mermaid
