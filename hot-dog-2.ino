@@ -216,8 +216,13 @@ void handleTelegramCommands(bool isHot)
     if (text == "/status") {
       bot.sendMessage(chat_id, buildStatusMessage(isHot), "");
     } else if (text == "/uptime") {
-      const uint32_t minutes = millis() / 60000UL;
-      bot.sendMessage(chat_id, "Uptime: " + String(minutes) + " min", "");
+      const uint32_t totalSec = millis() / 1000UL;
+      const uint32_t h  = totalSec / 3600;
+      const uint32_t m  = (totalSec % 3600) / 60;
+      const uint32_t s  = totalSec % 60;
+      char buf[32];
+      snprintf(buf, sizeof(buf), "Uptime: %02lu:%02lu:%02lu", h, m, s);
+      bot.sendMessage(chat_id, buf, "");
     }
   }
 }
