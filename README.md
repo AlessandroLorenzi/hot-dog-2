@@ -46,7 +46,9 @@ flowchart TD
     C --> E[Read SHTC3 sensor]
     E --> F[Update max temp / max humidity]
     F --> K[Print to Serial]
-    K --> L{Interval elapsed?}
+    K --> H{temp ≥ THRESHOLD?}
+    H -- no  --> N
+    H -- yes --> L{Interval elapsed?}
     L -- no  --> N
     L -- yes --> M[Send Telegram message]
     M --> N[Draw e-paper display]
