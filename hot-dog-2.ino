@@ -47,7 +47,6 @@ uint32_t lastTelegramOkMs = 0;
 
 float tempC = NAN;
 float humPct = NAN;
-int batteryMv = 0;
 String tempString;
 String humString;
 
@@ -59,7 +58,6 @@ String buildStatusMessage(bool isHot);
 void maybeSendTelegramAlert(bool isHot);
 void printOnSerial(bool isHot);
 void epdDraw(bool isHot);
-int readBatteryVoltage();
 
 void setup() {
   Serial.begin(115200);
@@ -96,8 +94,6 @@ void loop() {
 
   tempString = isnan(tempC) ? "--.-" : String(tempC, 0);
   humString = isnan(humPct) ? "--.-" : String(humPct, 0);
-
-  batteryMv = readBatteryVoltage();
 
   const bool isHot = (!isnan(tempC) && tempC >= THRESHOLD);
 
@@ -243,8 +239,6 @@ void printOnSerial(bool isHot)
   Serial.println(isnan(humPct) ? String("n/a") : String(humPct, 1));
   Serial.print("Max Humid: ");
   Serial.println((maxHumPct < -999.0f) ? String("n/a") : String(maxHumPct, 1));
-  Serial.print("Battery mV:");
-  Serial.println(batteryMv);
   Serial.print("Status:    ");
   Serial.println(isHot ? "FENNY HOT" : "FENNY OK");
 }
@@ -294,12 +288,4 @@ void epdDraw(bool isHot)
   } while (display.nextPage());
 }
 
-int readBatteryVoltage()
-{
-  const int pin = 4;
-  analogReadResolution(12);
-  analogSetPinAttenuation(pin, ADC_11db);
-  const int mv = analogReadMilliVolts(pin);
-  return (int)(mv * 2.0f);
-}
 
