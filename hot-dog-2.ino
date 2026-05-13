@@ -48,6 +48,8 @@ float tempC = NAN;
 float humPct = NAN;
 String tempString;
 String humString;
+uint8_t partialRefreshCount = 0;
+#define FULL_REFRESH_EVERY 10
 
 bool connectToWifi(uint32_t timeoutMs);
 bool readSensor(float& outTempC, float& outHumPct);
@@ -237,7 +239,12 @@ void printOnSerial(bool isHot)
 
 void epdDraw(bool isHot)
 {
-  display.setFullWindow();
+  if (partialRefreshCount == 0) {
+    display.setFullWindow();
+  } else {
+    display.setPartialWindow(0, 0, display.width(), display.height());
+  }
+  partialRefreshCount = (partialRefreshCount + 1) % FULL_REFRESH_EVERY;
 
   display.firstPage();
   do {
