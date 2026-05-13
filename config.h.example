@@ -1,0 +1,12 @@
+#pragma once
+
+// WiFi credentials
+#define WIFI_SSID "your_ssid"
+#define WIFI_PASSWORD "your_password"
+
+// Telegram bot settings
+#define BOT_TOKEN ""
+#define CHAT_ID ""
+
+// Threshold for HOT status
+#define THRESHOLD 27.0f
