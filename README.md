@@ -40,7 +40,8 @@ Monitors a sensor (SHTC3) and displays current + max values on a 1.54" e-ink scr
 ```mermaid
 flowchart TD
     A([setup]) --> B[Init Serial / GPIO / I2C / SHTC3]
-    B --> C([loop])
+    B --> W[Connect WiFi]
+    W --> C([loop])
     C --> D[EPD ON]
     D --> E[Read SHTC3 sensor]
     E --> F[Update max temp / max humidity]
@@ -49,7 +50,7 @@ flowchart TD
     L -- no  --> N
     L -- yes --> M[Send Telegram message]
     M --> N[Draw e-paper display]
-    N --> O[WiFi OFF / EPD OFF]
+    N --> O[EPD OFF]
     O --> P[delay 60s]
     P --> C
 ```
