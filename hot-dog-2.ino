@@ -65,7 +65,7 @@ void setup() {
   digitalWrite(VBAT_PWR, HIGH);
 
   pinMode(EPD_PWR, OUTPUT);
-  digitalWrite(EPD_PWR, HIGH); // EPD off; loop() accende prima del disegno
+  digitalWrite(EPD_PWR, LOW); // EPD ON
 
   pinMode(3, OUTPUT);
   digitalWrite(3, HIGH);
@@ -74,12 +74,16 @@ void setup() {
 
   Wire.begin(I2C_SDA, I2C_SCL);
   shtc3.begin();
+
+  SPI.begin(EPD_SCK, -1, EPD_MOSI, EPD_CS);
+  display.epd2.selectSPI(SPI, SPISettings(SPI_CLOCK_HZ, MSBFIRST, SPI_MODE0));
+  display.init(115200);
+  display.setRotation(3);
+
   connectToWifi(WIFI_TIMEOUT_MS);
 }
 
 void loop() {
-  digitalWrite(EPD_PWR, LOW); // EPD ON
-
   if (!readSensor(tempC, humPct)) {
     Serial.println("SHTC3 read failed.");
   }
@@ -99,9 +103,6 @@ void loop() {
   printOnSerial(isHot);
   maybeSendTelegramAlert(isHot);
   epdDraw(isHot);
-
-  display.hibernate();
-  digitalWrite(EPD_PWR, HIGH); // EPD OFF
 
   delay((uint32_t)SLEEP_SECONDS * 1000UL);
 }
@@ -236,11 +237,6 @@ void printOnSerial(bool isHot)
 
 void epdDraw(bool isHot)
 {
-  SPI.begin(EPD_SCK, -1, EPD_MOSI, EPD_CS);
-  display.epd2.selectSPI(SPI, SPISettings(SPI_CLOCK_HZ, MSBFIRST, SPI_MODE0));
-
-  display.init(115200);
-  display.setRotation(3);
   display.setFullWindow();
 
   display.firstPage();
