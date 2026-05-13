@@ -18,13 +18,13 @@ Tested on the [ESP32-S3-ePaper-1.54](https://github.com/waveshareteam/ESP32-S3-e
 
 1. Copy `config.h.example` to `config.h` and fill in your credentials:
 
-```cpp
-#define WIFI_SSID     "your_ssid"
-#define WIFI_PASSWORD "your_password"
-#define BOT_TOKEN     "your_telegram_bot_token"
-#define CHAT_ID       "your_telegram_chat_id"
-#define THRESHOLD     27.0f   // °C
-```
+    ```cpp
+    #define WIFI_SSID     "your_ssid"
+    #define WIFI_PASSWORD "your_password"
+    #define BOT_TOKEN     "your_telegram_bot_token"
+    #define CHAT_ID       "your_telegram_chat_id"
+    #define THRESHOLD     27.0f   // °C
+    ```
 
 2. Open `hot-dog-2.ino` in Arduino IDE, install the required libraries, and flash.
 
@@ -39,8 +39,11 @@ Tested on the [ESP32-S3-ePaper-1.54](https://github.com/waveshareteam/ESP32-S3-e
 Sends a message every 60 seconds while temperature is above the threshold. No message when temperature is below threshold.
 
 Available commands:
-- `/status` — current temperature, humidity, and max values
-- `/uptime` — how many minutes the device has been running
+
+- `status` — current temperature, humidity, and max values
+- `uptime` — how long the device has been running
+
+The bot also shows a persistent keyboard with **status** and **uptime** buttons. Send `/start` to show the keyboard for the first time.
 
 ## Loop flow
 

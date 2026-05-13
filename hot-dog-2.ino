@@ -205,6 +205,13 @@ String buildStatusMessage(bool isHot)
   return msg;
 }
 
+static const char* KEYBOARD = "[[{\"text\":\"status\"},{\"text\":\"uptime\"}]]";
+
+void replyWithKeyboard(const String& chat_id, const String& msg)
+{
+  bot.sendMessageWithReplyKeyboard(chat_id, msg, "", KEYBOARD, true, false);
+}
+
 void handleTelegramCommands(bool isHot)
 {
   if (!hasTelegramConfig()) return;
@@ -213,16 +220,18 @@ void handleTelegramCommands(bool isHot)
   for (int i = 0; i < numMessages; i++) {
     const String& chat_id = bot.messages[i].chat_id;
     const String& text    = bot.messages[i].text;
-    if (text == "/status") {
-      bot.sendMessage(chat_id, buildStatusMessage(isHot), "");
-    } else if (text == "/uptime") {
+    if (text == "/start") {
+      replyWithKeyboard(chat_id, "Hot Dog 2 - usa i bottoni per i comandi.");
+    } else if (text == "status") {
+      replyWithKeyboard(chat_id, buildStatusMessage(isHot));
+    } else if (text == "uptime") {
       const uint32_t totalSec = millis() / 1000UL;
       const uint32_t h  = totalSec / 3600;
       const uint32_t m  = (totalSec % 3600) / 60;
       const uint32_t s  = totalSec % 60;
       char buf[32];
       snprintf(buf, sizeof(buf), "Uptime: %02lu:%02lu:%02lu", h, m, s);
-      bot.sendMessage(chat_id, buf, "");
+      replyWithKeyboard(chat_id, buf);
     }
   }
 }
