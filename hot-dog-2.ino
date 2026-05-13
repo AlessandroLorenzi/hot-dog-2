@@ -27,7 +27,6 @@
 #define SLEEP_SECONDS           60
 #define WIFI_TIMEOUT_MS         15000
 #define TELEGRAM_HOT_INTERVAL_S 60
-#define TELEGRAM_OK_INTERVAL_S  600
 
 // ----------- EPD (1.54" D67) -----------
 GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> display(
@@ -42,7 +41,6 @@ UniversalTelegramBot bot(BOT_TOKEN, wifiClient);
 float maxTempC = -1000.0f;
 float maxHumPct = -1000.0f;
 uint32_t lastTelegramHotMs = 0;
-uint32_t lastTelegramOkMs = 0;
 
 float tempC = NAN;
 float humPct = NAN;
@@ -193,15 +191,17 @@ String buildStatusMessage(bool isHot)
 
 void maybeSendTelegramAlert(bool isHot)
 {
+  if (!isHot) {
+    return;
+  }
+
   if (!hasTelegramConfig()) {
     Serial.println("Telegram disabled: BOT_TOKEN/CHAT_ID not set in config.h");
     return;
   }
 
-  const uint32_t intervalMs = (uint32_t)(isHot ? TELEGRAM_HOT_INTERVAL_S : TELEGRAM_OK_INTERVAL_S) * 1000UL;
-  uint32_t& lastSentMs = isHot ? lastTelegramHotMs : lastTelegramOkMs;
-
-  if (lastSentMs != 0 && (millis() - lastSentMs) < intervalMs) {
+  const uint32_t intervalMs = (uint32_t)TELEGRAM_HOT_INTERVAL_S * 1000UL;
+  if (lastTelegramHotMs != 0 && (millis() - lastTelegramHotMs) < intervalMs) {
     return;
   }
 
@@ -215,7 +215,7 @@ void maybeSendTelegramAlert(bool isHot)
   const bool sent = bot.sendMessage(CHAT_ID, message, "");
 
   if (sent) {
-    lastSentMs = millis();
+    lastTelegramHotMs = millis();
     Serial.println("Telegram message sent.");
   } else {
     Serial.println("Telegram send failed.");

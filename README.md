@@ -34,8 +34,7 @@ Tested on the [ESP32-S3-ePaper-1.54](https://github.com/waveshareteam/ESP32-S3-e
 
 ## Telegram alerts
 
-- **HOT** (temp ≥ threshold): message every 60 seconds
-- **OK** (temp < threshold): message every 10 minutes
+Sends a message every 60 seconds while temperature is above the threshold. No message when temperature is below threshold.
 
 ## Loop flow
 
