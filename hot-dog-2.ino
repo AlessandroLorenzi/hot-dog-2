@@ -6,6 +6,7 @@
 #include <GxEPD2_BW.h>
 #include <Adafruit_SHTC3.h>
 #include <UniversalTelegramBot.h>
+#include <esp_sleep.h>
 #include "config.h"
 
 // ----------- EPD pins (ESP32-S3) -----------
@@ -28,6 +29,7 @@
 #define WIFI_TIMEOUT_MS         15000
 #define TELEGRAM_HOT_INTERVAL_S  60
 #define TELEGRAM_CHECK_INTERVAL_S 5
+#define HISTORY_SIZE            60
 
 // ----------- EPD (1.54" D67) -----------
 GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> display(
@@ -42,8 +44,6 @@ UniversalTelegramBot bot(BOT_TOKEN, wifiClient);
 float maxTempC = -1000.0f;
 float maxHumPct = -1000.0f;
 uint32_t lastTelegramHotMs = 0;
-uint32_t lastSensorUpdateMs = 0;
-uint32_t lastTelegramCheckMs = 0;
 
 float tempC = NAN;
 float humPct = NAN;
@@ -52,13 +52,18 @@ String humString;
 uint8_t partialRefreshCount = 0;
 #define FULL_REFRESH_EVERY 10
 
+// ----------- Round-robin history (last 60 minutes) -----------
+float   tempHistory[HISTORY_SIZE];
+float   humHistory[HISTORY_SIZE];
+uint8_t historyIndex   = 0;
+uint8_t historySamples = 0;
+
 bool connectToWifi(uint32_t timeoutMs);
 bool readSensor(float& outTempC, float& outHumPct);
 bool hasTelegramConfig();
 String buildStatusMessage(bool isHot);
 void handleTelegramCommands(bool isHot);
 void maybeSendTelegramAlert(bool isHot);
-void printOnSerial(bool isHot);
 void epdDraw(bool isHot);
 
 void setup() {
@@ -84,43 +89,50 @@ void setup() {
   display.init(115200);
   display.setRotation(3);
 
+  for (int i = 0; i < HISTORY_SIZE; i++) {
+    tempHistory[i] = NAN;
+    humHistory[i]  = NAN;
+  }
+
   connectToWifi(WIFI_TIMEOUT_MS);
   wifiClient.setInsecure();
 }
 
 void loop() {
-  const uint32_t now = millis();
+  // Read sensors
+  if (!readSensor(tempC, humPct)) {
+    Serial.println("SHTC3 read failed.");
+  }
+
+  // Store sample in round-robin buffer (NAN recorded on failure)
+  tempHistory[historyIndex] = tempC;
+  humHistory[historyIndex]  = humPct;
+  historyIndex = (historyIndex + 1) % HISTORY_SIZE;
+  if (historySamples < HISTORY_SIZE) historySamples++;
+
+  if (!isnan(tempC) && (maxTempC < -999.0f || tempC > maxTempC)) maxTempC = tempC;
+  if (!isnan(humPct) && (maxHumPct < -999.0f || humPct > maxHumPct)) maxHumPct = humPct;
+
+  tempString = isnan(tempC) ? "--.-" : String(tempC, 0);
+  humString  = isnan(humPct) ? "--.-" : String(humPct, 0);
+
+  const bool isHot = (!isnan(tempC) && tempC >= THRESHOLD);
+
+  // Telegram
   const bool wifiOk = connectToWifi(WIFI_TIMEOUT_MS);
-
-  if (wifiOk && (lastTelegramCheckMs == 0 || (now - lastTelegramCheckMs) >= (uint32_t)TELEGRAM_CHECK_INTERVAL_S * 1000UL)) {
-    lastTelegramCheckMs = now;
-    const bool isHot = (!isnan(tempC) && tempC >= THRESHOLD);
+  if (wifiOk) {
     handleTelegramCommands(isHot);
+    maybeSendTelegramAlert(isHot);
+  } else {
+    Serial.println("WiFi not connected, skipping Telegram.");
   }
 
-  if (lastSensorUpdateMs == 0 || (now - lastSensorUpdateMs) >= (uint32_t)SLEEP_SECONDS * 1000UL) {
-    lastSensorUpdateMs = now;
+  // Display
+  epdDraw(isHot);
 
-    if (!readSensor(tempC, humPct)) {
-      Serial.println("SHTC3 read failed.");
-    }
-
-    if (!isnan(tempC) && (maxTempC < -999.0f || tempC > maxTempC)) maxTempC = tempC;
-    if (!isnan(humPct) && (maxHumPct < -999.0f || humPct > maxHumPct)) maxHumPct = humPct;
-
-    tempString = isnan(tempC) ? "--.-" : String(tempC, 0);
-    humString  = isnan(humPct) ? "--.-" : String(humPct, 0);
-
-    const bool isHot = (!isnan(tempC) && tempC >= THRESHOLD);
-
-    printOnSerial(isHot);
-    if (wifiOk) {
-      maybeSendTelegramAlert(isHot);
-    } else {
-      Serial.println("WiFi not connected, skipping Telegram.");
-    }
-    epdDraw(isHot);
-  }
+  // Light sleep for 60 seconds
+  esp_sleep_enable_timer_wakeup(60000000);  // 60 seconds in microseconds
+  esp_light_sleep_start();
 }
 
 bool connectToWifi(uint32_t timeoutMs)
@@ -205,6 +217,52 @@ String buildStatusMessage(bool isHot)
   return msg;
 }
 
+// Builds a quickchart.io image URL for the given history array.
+// Returns an empty string if no samples are available.
+static String buildChartUrl(float* history, const char* yLabel, const char* lineColor)
+{
+  if (historySamples == 0) return "";
+
+  const uint8_t count    = historySamples;
+  const uint8_t startIdx = (count < HISTORY_SIZE) ? 0 : historyIndex;
+
+  String json;
+  json.reserve(800);
+  json = "{type:'line',data:{labels:[";
+  for (uint8_t i = 0; i < count; i++) {
+    if (i) json += ',';
+    json += String(-(int)(count - 1 - i));
+  }
+  json += "],datasets:[{label:'";
+  json += yLabel;
+  json += "',data:[";
+  for (uint8_t i = 0; i < count; i++) {
+    if (i) json += ',';
+    const uint8_t idx = (startIdx + i) % HISTORY_SIZE;
+    if (isnan(history[idx])) json += "null";
+    else json += String(history[idx], 1);
+  }
+  json += "],fill:false,borderColor:'";
+  json += lineColor;
+  json += "',pointRadius:1,lineTension:0.3}]},options:{legend:{display:false},scales:{xAxes:[{ticks:{maxTicksLimit:5}}],yAxes:[{ticks:{beginAtZero:false}}]}}}";
+
+  // Percent-encode everything except unreserved chars and comma
+  String url = "https://quickchart.io/chart?w=400&h=200&c=";
+  url.reserve(url.length() + json.length() * 2);
+  for (size_t i = 0; i < json.length(); i++) {
+    const char c = json[i];
+    if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+        (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.' || c == '~' || c == ',') {
+      url += c;
+    } else {
+      char buf[4];
+      snprintf(buf, sizeof(buf), "%%%02X", (unsigned char)c);
+      url += buf;
+    }
+  }
+  return url;
+}
+
 static const char* KEYBOARD = "[[{\"text\":\"status\"},{\"text\":\"uptime\"}]]";
 
 void replyWithKeyboard(const String& chat_id, const String& msg)
@@ -224,6 +282,10 @@ void handleTelegramCommands(bool isHot)
       replyWithKeyboard(chat_id, "Hot Dog 2 - usa i bottoni per i comandi.");
     } else if (text == "status") {
       replyWithKeyboard(chat_id, buildStatusMessage(isHot));
+      const String tempUrl = buildChartUrl(tempHistory, "T (C)", "#e74c3c");
+      const String humUrl  = buildChartUrl(humHistory,  "RH (%)", "#2980b9");
+      if (tempUrl.length() > 0) bot.sendPhoto(chat_id, tempUrl, "Temperatura ultima ora");
+      if (humUrl.length() > 0)  bot.sendPhoto(chat_id, humUrl,  "Umidita ultima ora");
     } else if (text == "uptime") {
       const uint32_t totalSec = millis() / 1000UL;
       const uint32_t h  = totalSec / 3600;
@@ -264,20 +326,6 @@ void maybeSendTelegramAlert(bool isHot)
   }
 }
 
-void printOnSerial(bool isHot)
-{
-  Serial.println("---- HOT DOG EINK ----");
-  Serial.print("Temp:      ");
-  Serial.println(isnan(tempC) ? String("n/a") : String(tempC, 1));
-  Serial.print("Max Temp:  ");
-  Serial.println((maxTempC < -999.0f) ? String("n/a") : String(maxTempC, 1));
-  Serial.print("Humid:     ");
-  Serial.println(isnan(humPct) ? String("n/a") : String(humPct, 1));
-  Serial.print("Max Humid: ");
-  Serial.println((maxHumPct < -999.0f) ? String("n/a") : String(maxHumPct, 1));
-  Serial.print("Status:    ");
-  Serial.println(isHot ? "FENNY HOT" : "FENNY OK");
-}
 
 void epdDraw(bool isHot)
 {
@@ -319,5 +367,3 @@ void epdDraw(bool isHot)
     }
   } while (display.nextPage());
 }
-
-
